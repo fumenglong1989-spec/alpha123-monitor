@@ -19,7 +19,7 @@
 - 定时限制：https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
 - 禁用规则：https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows
 
-cron 为每小时 02、07…57 分，避开整点拥挤。GitHub schedule 可能延迟，严重时丢弃，并非严格 5 分钟 SLA；只在默认分支运行。公共仓库连续 60 天无活动会自动停用定时工作流。不要假设机器人状态提交能永久规避该规则：建议每月人工检查 Actions 并提交一次 README 维护记录，停用后重新启用。零费用方案不能保证永久无人维护或 5 分钟必达。
+cron 为每小时 03、08…58 分，避开整点拥挤。GitHub schedule 可能延迟，严重时丢弃，并非严格 5 分钟 SLA；只在默认分支运行。公共仓库连续 60 天无活动会自动停用定时工作流。不要假设机器人状态提交能永久规避该规则：建议每月人工检查 Actions 并提交一次 README 维护记录，停用后重新启用。零费用方案不能保证永久无人维护或 5 分钟必达。
 
 ## 本地安装和验证
 
