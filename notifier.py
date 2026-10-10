@@ -20,11 +20,15 @@ def message(events, detected, recipient, user, test=False):
 def send(recipient, events, detected, test=False):
     user, password, mode = smtp_config()
     context = ssl.create_default_context()
+    logging.info('SMTP 阶段=建立加密连接 recipient=%s', recipient)
     client = smtplib.SMTP_SSL('smtp.qq.com', 465, timeout=30, context=context) if mode == 'ssl' else smtplib.SMTP('smtp.qq.com', 587, timeout=30)
     with client:
+        logging.info('SMTP 阶段=连接成功 recipient=%s', recipient)
         if mode == 'starttls':
             client.ehlo(); client.starttls(context=context); client.ehlo()
+        logging.info('SMTP 阶段=身份认证 recipient=%s', recipient)
         client.login(user, password)
+        logging.info('SMTP 阶段=提交邮件 recipient=%s', recipient)
         refused = client.send_message(message(events, detected, recipient, user, test), to_addrs=[recipient])
         if refused:
             raise RuntimeError('SMTP 收件人被拒绝')
