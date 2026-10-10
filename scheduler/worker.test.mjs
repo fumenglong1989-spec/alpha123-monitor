@@ -32,7 +32,7 @@ test('authentication rejection is redacted and never retried', async () => {
 });
 test('network exception is redacted and never retried', async () => {
   let calls=0;
-  await assert.rejects(dispatchTick(controller(),env,async()=>{calls++;throw Error('synthetic-secret');}),e=>e.message==='dispatch_network_or_timeout');
+  await assert.rejects(dispatchTick(controller(),env,async()=>{calls++;throw Error('synthetic-secret');}),e=>e.message==='dispatch_fetch_OtherError');
   assert.equal(calls,1);
 });
 test('no public HTTP trigger endpoint', async () => {

@@ -11,7 +11,7 @@ export async function dispatchTick(controller, env, request = fetch) {
     response = await request(endpoint, {
       method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
       headers: {
-        Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN.trim()}`,
         Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json',
         'User-Agent': 'alpha123-scheduler',
@@ -22,8 +22,9 @@ export async function dispatchTick(controller, env, request = fetch) {
         trigger_source: 'cloudflare', scheduled_time: scheduled,
       } }),
     });
-  } catch {
-    throw new Error('dispatch_network_or_timeout'); // Do not log raw exception.
+  } catch (error) {
+    const name = ['TypeError', 'TimeoutError', 'AbortError'].includes(error?.name) ? error.name : 'OtherError';
+    throw new Error(`dispatch_fetch_${name}`); // Never log message, request, or credentials.
   }
   if (response.status !== 200 && response.status !== 204)
     throw new Error(`dispatch_http_${response.status}`); // Never log response body.

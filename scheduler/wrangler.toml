@@ -1,12 +1,10 @@
-# REVIEW DRAFT: no deployment or scheduled trigger has been created.
+# Free plan only. GITHUB_DISPATCH_TOKEN is an encrypted Worker Secret.
 name = "alpha123-dispatch-scheduler"
 main = "worker.mjs"
 compatibility_date = "2026-10-10"
-workers_dev = false
+workers_dev = true
 preview_urls = false
 [vars]
-SCHEDULER_ENABLED = "false"
+SCHEDULER_ENABLED = "true"
 [triggers]
-crons = []
-# After user approval and successful probe only: crons = ["*/5 * * * *"]
-# GITHUB_DISPATCH_TOKEN must be a Worker Secret, never a plaintext variable.
+crons = ["*/5 * * * *"]
