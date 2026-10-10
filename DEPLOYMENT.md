@@ -14,6 +14,6 @@
 
 现有 smtp.163.com:465 和 SMTP_USER/SMTP_PASSWORD Secrets 保留，未覆盖。此前真实邮件测试163服务器接受两个收件人，用户确认两个QQ邮箱实际收到，日志 https://github.com/fumenglong1989-spec/alpha123-monitor/actions/runs/38035345829 。该旧任务整体失败是主站访问403，不是邮件失败。
 
-公开仓库、标准 ubuntu-latest，不启用收费资源。Cron `2-57/5 * * * *`，GitHub调度可能延迟或丢弃，公开仓库60天无活动可能停用；不保证严格5分钟送达或永久无需维护。
+公开仓库、标准 ubuntu-latest，不启用收费资源。Cron `2/5 * * * *`，GitHub调度可能延迟或丢弃，公开仓库60天无活动可能停用；不保证严格5分钟送达或永久无需维护。
 
 最终启用与真实 schedule 证据将在正式初始化通过后追加。

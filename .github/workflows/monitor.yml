@@ -1,7 +1,7 @@
 name: Alpha123 Monitor
 on:
   schedule:
-    - cron: '2-57/5 * * * *'
+    - cron: '2/5 * * * *'
   workflow_dispatch:
     inputs:
       mode:

@@ -89,7 +89,7 @@ Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test �
 
 ## 当前交付状态
 
-项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，SMTP 分别接受两封测试邮件，用户确认两个QQ邮箱均已实际收到。云端网站首页/API仍受Cloudflare挑战而返回403，实际验收结果见 DEPLOYMENT.md；免费替代方案评估见 FREE_HOSTING.md。定时工作流保持关闭，直到网站访问和邮件测试均通过。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。
+项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，SMTP 分别接受两封测试邮件，用户确认两个QQ邮箱均已实际收到。主站云端403已通过切换官方备用站解决：连续4次首页/API200、今日解析成功、跨实例模拟去重验收通过。正式初始化完成，MONITOR_ENABLED=true，定时工作流已启用。实际定时执行证据见 DEPLOYMENT.md；免费方案评估见 FREE_HOSTING.md。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。
 
 ## 跨运行验收
 
