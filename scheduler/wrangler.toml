@@ -1,0 +1,12 @@
+# REVIEW DRAFT: no deployment or scheduled trigger has been created.
+name = "alpha123-dispatch-scheduler"
+main = "worker.mjs"
+compatibility_date = "2026-10-10"
+workers_dev = false
+preview_urls = false
+[vars]
+SCHEDULER_ENABLED = "false"
+[triggers]
+crons = []
+# After user approval and successful probe only: crons = ["*/5 * * * *"]
+# GITHUB_DISPATCH_TOKEN must be a Worker Secret, never a plaintext variable.

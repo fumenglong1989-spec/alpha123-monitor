@@ -8,6 +8,13 @@ on:
         type: choice
         options: [monitor, probe, test-mail]
         default: monitor
+      trigger_source:
+        type: choice
+        options: [manual, cloudflare]
+        default: manual
+      scheduled_time:
+        type: string
+        required: false
       bootstrap:
         description: '仅首次部署且没有旧状态时选择 true；丢失旧状态时禁止重置'
         type: boolean
@@ -19,7 +26,12 @@ concurrency:
   cancel-in-progress: false
 jobs:
   monitor:
-    if: github.event.repository.private == false && (github.event_name != 'schedule' || vars.MONITOR_ENABLED == 'true')
+    # Select exactly one automatic scheduler; retain native cron as optional backup.
+    if: >-
+      github.event.repository.private == false &&
+      (vars.MONITOR_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'monitor')) &&
+      ((github.event_name == 'schedule' && (vars.SCHEDULER_SOURCE == '' || vars.SCHEDULER_SOURCE == 'github')) ||
+       (github.event_name == 'workflow_dispatch' && (inputs.trigger_source != 'cloudflare' || vars.SCHEDULER_SOURCE == 'cloudflare')))
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -30,7 +42,24 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m playwright install --with-deps chromium
       - run: python -m unittest discover -s tests -v
+      - name: Record scheduler origin
+        env:
+          TRIGGER_SOURCE: ${{ inputs.trigger_source || 'github' }}
+          SCHEDULED_TIME: ${{ inputs.scheduled_time }}
+        run: |
+          python - <<'PY'
+          import os, json
+          print(json.dumps({'event': os.environ['GITHUB_EVENT_NAME'], 'source': os.environ['TRIGGER_SOURCE'], 'scheduled_time': os.environ['SCHEDULED_TIME'], 'run_id': os.environ['GITHUB_RUN_ID']}))
+          PY
+      - name: Claim automatic scheduler tick
+        id: tick
+        env:
+          TRIGGER_SOURCE: ${{ inputs.trigger_source || 'github' }}
+          SCHEDULED_TIME: ${{ inputs.scheduled_time }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scheduler_guard.py
       - name: Run monitor or explicit test
+        if: steps.tick.outputs.should_run == 'true'
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
@@ -45,3 +74,11 @@ jobs:
             monitor) python monitor.py ;;
             *) exit 1 ;;
           esac
+      - name: Check dispatch Token expiry
+        if: always() && steps.tick.outputs.should_run == 'true' && (inputs.mode == 'monitor' || github.event_name == 'schedule')
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          GITHUB_TOKEN: ${{ github.token }}
+          DISPATCH_TOKEN_EXPIRES_AT: ${{ vars.DISPATCH_TOKEN_EXPIRES_AT }}
+        run: python token_reminder.py

@@ -96,3 +96,12 @@ Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test �
 `acceptance.yml` 手动依次选择 phase 1、2、3、4。每个独立实例先真实读取备用站，再在隔离的 `monitor-acceptance` 分支验证新增、去重、再次新增、字段更新，生成 UTF-8 纯文本及 HTML 邮件但不调用 SMTP；该工作流没有 SMTP Secrets。重复阶段会失败，禁止重置生产状态。生产仅使用 `monitor-state` 分支。
 
 停止监控：在 Actions 禁用 Alpha123 Monitor，并将仓库 Actions 变量 `MONITOR_ENABLED` 改成 `false`。密码和授权码仍仅存原有 Secrets，不需重新生成。
+
+
+## Cloudflare 免费定时触发
+Workers 只调用 GitHub workflow_dispatch，Python 采集和163 SMTP配置保持原样。
+仓库变量 MONITOR_ENABLED=true；SCHEDULER_SOURCE=cloudflare 时只运行 Workers 自动触发，原生 cron 保留但跳过。改为 github 可选择原生调度。
+Workers Cron 为 */5 * * * *（UTC）。SCHEDULER_ENABLED=true，GITHUB_DISPATCH_TOKEN 必须是加密 Secret，仅限本仓库、Actions读写权限。不得放入代码、普通变量或日志。
+Github monitor-state 分支持久化5分钟触发槽位，并发任务串行执行；同一槽位重复触发跳过，失败后下一周期继续重试邮件待发队列。
+DISPATCH_TOKEN_EXPIRES_AT 填实际到期日期 YYYY-MM-DD；到期前14、7、1天分别提醒两个收件人，各自失败独立重试。日期是UTC，到期当天可能已失效，必须提前续期。
+停止：将 MONITOR_ENABLED=false；或关闭Workers Cron。Worker代码的HTTP入口固定404，不能通过公网请求触发监控。
