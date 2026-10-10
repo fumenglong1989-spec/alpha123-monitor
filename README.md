@@ -85,6 +85,8 @@ Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test �
 
 停止：Actions → Alpha123 Monitor → 右上菜单 → Disable workflow。保留 monitor-state 便于恢复；再次 Enable workflow 后可继续去重。也可撤销163邮箱 SMTP 授权码。无需购买服务器。
 
+额外关闭开关：Settings → Secrets and variables → Actions → Variables 中 MONITOR_ENABLED 默认为 false。只有网站 probe 和双收件人邮件验收通过后才改为 true 并启用 monitor 工作流。该变量只影响 schedule；Deployment Validation 仅手动运行，没有 schedule。
+
 ## 当前交付状态
 
-项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，实际验收结果见 DEPLOYMENT.md。定时工作流保持关闭，直到网站访问和邮件测试均通过。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。
+项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，SMTP 分别接受两封测试邮件，用户确认两个QQ邮箱均已实际收到。云端网站首页/API仍受Cloudflare挑战而返回403，实际验收结果见 DEPLOYMENT.md；免费替代方案评估见 FREE_HOSTING.md。定时工作流保持关闭，直到网站访问和邮件测试均通过。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。

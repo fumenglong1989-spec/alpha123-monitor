@@ -25,7 +25,7 @@ class DeliveryError(Exception):
 
 
 def classify(exc, stage):
-    if isinstance(exc, ssl.SSLError): category = 'tls_handshake_failed'
+    if isinstance(exc, ssl.SSLError) or (stage == 'tls_handshake' and isinstance(exc, OSError)): category = 'tls_handshake_failed'
     elif isinstance(exc, smtplib.SMTPAuthenticationError): category = 'authentication_rejected'
     elif isinstance(exc, smtplib.SMTPServerDisconnected): category = 'server_disconnected'
     elif isinstance(exc, smtplib.SMTPRecipientsRefused): category = 'recipient_rejected'

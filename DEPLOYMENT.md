@@ -1,20 +1,17 @@
-# 实际 GitHub 部署状态（2026-10-10 北京时间）
+# 实际部署状态（2026-10-10 北京时间）
 
 - 仓库：https://github.com/fumenglong1989-spec/alpha123-monitor
 - Actions：https://github.com/fumenglong1989-spec/alpha123-monitor/actions
-- 复核运行：https://github.com/fumenglong1989-spec/alpha123-monitor/actions/runs/38034316280
-- 已上传完整项目，Public 仓库，标准 ubuntu-latest，无付费服务。
-- GitHub CLI 已授权。Windows Git HTTPS 推送失败，改用 GitHub 官方 Git Data/Contents API 上传，证书验证保持开启。
-- GitHub Ubuntu 上的 16 项模拟测试通过。
-- 真实浏览器 probe 三次访问页面均为 HTTP 403；已验证的公开接口 `/api/data?fresh=0` 在同一云端环境直接读取也返回 HTTP 403。
-- 不绕过访问控制。当前 GitHub 云端来源无法正常访问网站，因此尚未达到可运行验收条件。
-- workflow cron 保留每 5 分钟配置，但 workflow 当前为 disabled_manually，避免持续失败。
-- SMTP_USER、SMTP_PASSWORD Secrets 已设置（2026-10-10 15:32 北京时间）；已执行两轮真实 test-mail。两次均在加密连接成功后的 login() 阶段遇到 SMTPServerDisconnected，未进入提交邮件阶段，两个收件人均未发送成功。
-- 邮件复核日志：https://github.com/fumenglong1989-spec/alpha123-monitor/actions/runs/38034911641
-- monitor-state 尚未初始化；初始化步骤应在网站访问及邮件配置验收后进行。
+- 本轮验收日志：https://github.com/fumenglong1989-spec/alpha123-monitor/actions/runs/38035345829
+- 完整项目已上传到现有 Public 仓库，使用标准免费 Ubuntu runner；未启用付费服务。
+- 已纠正发件服务配置错误：smtp.163.com:465，SMTP SSL，证书验证开启。SMTP_USER/SMTP_PASSWORD由现有GitHub Secrets传入，无需更换授权码。QQ地址仅为收件人。
+- 24项本地和云端自动化测试通过，包含163主机/端口、Secrets读取、网络/TLS/认证/主动断连错误分类、敏感错误消息排除、邮件已接受后的QUIT断连不触发重发。
+- 北京时间15:43，163身份认证及提交成功：270114311@qq.com、249446251@qq.com分别得到SMTP accepted=true。
+- 用户已明确确认两个QQ邮箱均实际收到测试邮件。SMTP接受和实际收件两项均完成验收。
+- 网站：首页与API在GitHub Ubuntu均返回403及cf-mitigated: challenge；普通云端Chromium首页同样403。本地HTTP首页200/API403，本地Chromium页面和API均200。可确认Cloudflare挑战，不能推断具体风控规则；没有绕过挑战。
+- 本轮validation整体failure来自网站probe，不代表邮件失败。
+- 定时monitor保持disabled_manually；MONITOR_ENABLED=false额外阻止schedule。
+- monitor-state尚未初始化，避免将未通过网站访问验收的任务宣称为已上线。
+- 免费替代方案已查官方限制，详见FREE_HOSTING.md；未创建付费服务、未迁移Secrets到其他平台。
 
-需要用户确认 SMTP_USER 是发送 QQ 邮箱完整地址、SMTP 服务已开启、SMTP_PASSWORD 是该邮箱生成的有效 SMTP 授权码（不能发送到聊天），并检查 QQ 账号安全限制。login() 断连本身不能证明是授权码错误。网站访问需 Alpha123 提供允许正常访问的数据入口，或在符合网站规则的其他免费云环境重新验证。当前不能声称换一个云平台就一定可用。
-
-恢复验收顺序：正常云端 probe → test-mail（SMTP 接受与实际收件分别确认）→ 首次 monitor bootstrap=true → 验证状态分支及重复检查 → 启用定时监控。正式启用前必须解决 403。
-
-本报告替代 README 中交付时“尚未上传”的旧状态描述。
+剩余外部条件：网站提供允许正常自动读取的入口或授权，或实测通过且符合网站规则的免费运行环境。满足后再probe→初始化监控状态→去重验收→MONITOR_ENABLED=true并启用定时任务。

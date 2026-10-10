@@ -40,7 +40,7 @@ class NotifierTests(unittest.TestCase):
         send('270114311@qq.com', [], 'now')
         self.client.send_message.assert_called_once()
     def test_network_tls_and_server_disconnect_categories(self):
-        for exc, stage, expected in [(socket.gaierror(), 'tcp_connect', 'network_connection_failed'), (ssl.SSLError(), 'tls_handshake', 'tls_handshake_failed'), (smtplib.SMTPServerDisconnected(), 'smtp_greeting', 'server_disconnected')]:
+        for exc, stage, expected in [(socket.gaierror(), 'tcp_connect', 'network_connection_failed'), (ssl.SSLError(), 'tls_handshake', 'tls_handshake_failed'), (TimeoutError(), 'tls_handshake', 'tls_handshake_failed'), (smtplib.SMTPServerDisconnected(), 'smtp_greeting', 'server_disconnected')]:
             self.assertEqual(classify(exc, stage).category, expected)
     def test_missing_secret(self):
         with patch.dict(os.environ, SMTP_PASSWORD=''):
