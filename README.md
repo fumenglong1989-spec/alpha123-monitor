@@ -50,21 +50,21 @@ git remote add origin https://github.com/YOUR_USER/alpha123-monitor.git
 git push -u origin main
 ```
 
-3. Settings → Secrets and variables → Actions → New repository secret，添加 `SMTP_USER`（发送 QQ 邮箱完整地址）和 `SMTP_PASSWORD`（SMTP 授权码）。不要发给聊天助手、不要提交到代码。
+3. Settings → Secrets and variables → Actions → New repository secret，添加 `SMTP_USER`（发送163邮箱完整地址）和 `SMTP_PASSWORD`（SMTP 授权码）。不要发给聊天助手、不要提交到代码。
 4. Settings → Actions → General 确认允许 Actions。工作流申请 `contents: write`，用于写 `monitor-state` 分支。仓库/组织策略和分支规则必须允许该分支写入；主分支可以保护。不要把 `monitor-state` 设为默认分支。
 5. Actions → Alpha123 Monitor → Run workflow，先选 `probe`。日志显示真实网站检查成功，且不是 HTTP/解析错误。
 6. Run workflow 选择 `test-mail`（bootstrap=false），这是明确的一次真实测试发送；确认两个收件箱/垃圾邮件箱都收到。
 7. **仅首次部署** Run workflow 选择 `monitor`，bootstrap=true。自动创建 `monitor-state` 分支及 state.json，若当前有项目会立即通知。后续始终 bootstrap=false。旧状态丢失时不要勾选初始化，应恢复状态，避免重复。
 8. 检查后续定时运行成功。已有状态无新项目时不发邮件。有失败收件人会在下一次成功检查中重试；即使今日已空，旧待发队列仍重试。
 
-## QQ 邮箱授权码
+## 网易163邮箱 SMTP
 
-登录发送邮箱的 QQ 邮箱网页版，进入设置中的账户或账号安全，找到 POP3/IMAP/SMTP 服务（界面名称可能调整）。开启 SMTP/IMAP 服务，按页面要求完成手机验证，生成第三方客户端授权码。使用授权码作为 SMTP_PASSWORD，不能使用 QQ 登录密码。将授权码直接填入 GitHub Secret；撤销授权码后更新 Secret 即可轮换。SMTP_SSL 默认 `smtp.qq.com:465`，可通过环境变量 SMTP_MODE=starttls 使用 587 和强制 STARTTLS；证书验证始终开启。
+登录发送邮箱的网易163邮箱网页版，进入设置中的账户或账号安全，找到 POP3/IMAP/SMTP 服务（界面名称可能调整）。开启 SMTP/IMAP 服务，按页面要求完成手机验证，生成第三方客户端授权码。使用授权码作为 SMTP_PASSWORD，不能使用 163邮箱登录密码。将授权码直接填入 GitHub Secret；撤销授权码后更新 Secret 即可轮换。发件服务固定为 SMTP_SSL `smtp.163.com:465`，证书验证始终开启。两个 QQ 地址仅作为收件人。
 
 独立邮件测试：GitHub 手动 `test-mail`，或在自己的终端设置环境变量后运行：
 
 ```powershell
-$env:SMTP_USER = '你的发送邮箱@qq.com'
+$env:SMTP_USER = '你的发送邮箱@163.com'
 # 请通过自己的安全方式设置 SMTP_PASSWORD，避免把授权码写入脚本或共享终端历史。
 python notifier.py
 ```
@@ -81,10 +81,10 @@ SMTP 和状态存储之间无法做分布式事务：如果 SMTP 已接受邮件
 
 ## 日志、排查和停止
 
-Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test 查看日志。红色运行表示抓取、状态写入或某个收件人失败。网站 403/验证码：停止抓取，等待正常访问恢复，不绕过。邮件认证失败：确认 SMTP 服务已开启、授权码有效并更新 Secret。写状态失败：检查 contents 权限、monitor-state 分支保护和原始状态文件；不要直接删除状态。若长期没有运行，检查定时 workflow 是否被 60 天规则停用。
+Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test 查看日志。红色运行表示抓取、状态写入或某个收件人失败。网站 403/验证码：停止抓取，等待正常访问恢复，不绕过。邮件错误日志区分 network_connection_failed、tls_handshake_failed、authentication_rejected、server_disconnected、recipient_rejected、smtp_protocol_failed，并记录安全的阶段和响应数字码；不输出服务器错误正文和密码。仅身份认证明确被拒绝时才检查凭据，不将网络或断连判定为授权码错误。写状态失败：检查 contents 权限、monitor-state 分支保护和原始状态文件；不要直接删除状态。若长期没有运行，检查定时 workflow 是否被 60 天规则停用。
 
-停止：Actions → Alpha123 Monitor → 右上菜单 → Disable workflow。保留 monitor-state 便于恢复；再次 Enable workflow 后可继续去重。也可撤销 QQ SMTP 授权码。无需购买服务器。
+停止：Actions → Alpha123 Monitor → 右上菜单 → Disable workflow。保留 monitor-state 便于恢复；再次 Enable workflow 后可继续去重。也可撤销163邮箱 SMTP 授权码。无需购买服务器。
 
 ## 当前交付状态
 
-代码与模拟测试可本地执行，真实空数据探测成功；本环境没有 gh 命令或已验证的 GitHub 登录会话，未创建仓库、未设置 Secrets、未启用云端任务，未发送真实邮件。完成以上步骤并验证云端 probe 与双收件人测试后，才算部署完成。
+项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，实际验收结果见 DEPLOYMENT.md。定时工作流保持关闭，直到网站访问和邮件测试均通过。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。

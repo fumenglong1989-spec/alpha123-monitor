@@ -1,0 +1,32 @@
+name: Deployment Validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: alpha123-monitor
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m unittest discover -s tests -v
+      - name: Test 163 sender to both QQ recipients
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: python notifier.py
+      - name: Compare normal page and API access
+        if: always()
+        run: python diagnose_access.py
+      - name: Probe today airdrops without sending
+        if: always()
+        run: python monitor.py --probe

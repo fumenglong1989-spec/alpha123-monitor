@@ -90,7 +90,7 @@ def process(items, store, sender=send, detected=None):
             try: sender(recipient, batch['events'], batch['detected'])
             except Exception as exc:
                 failures += 1
-                logging.error('邮件失败 recipient=%s error_type=%s 下轮重试', recipient, type(exc).__name__)
+                logging.error('邮件失败 recipient=%s error_type=%s category=%s stage=%s smtp_code=%s 下轮重试', recipient, type(exc).__name__, getattr(exc, 'category', 'unknown'), getattr(exc, 'stage', 'unknown'), getattr(exc, 'smtp_code', None))
             else:
                 batch['done'].append(recipient_key)
                 store.save(state)
