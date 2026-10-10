@@ -31,8 +31,10 @@ def fetch_today():
             page = browser.new_page(timezone_id='Asia/Shanghai', locale='zh-CN')
             with page.expect_response(lambda r: r.url.split('?')[0] == 'https://alpha123.uk/api/data', timeout=45000) as result:
                 response = page.goto(URL, wait_until='domcontentloaded', timeout=45000)
+                logging.info('页面 HTTP 状态=%s', response.status if response else '无响应')
                 if not response or response.status != 200: raise ValueError('页面 HTTP 失败')
             api = result.value
+            logging.info('数据 API HTTP 状态=%s', api.status)
             if api.status != 200: raise ValueError('数据接口 HTTP 失败')
             data = api.json()
             if not isinstance(data, dict) or not isinstance(data.get('airdrops'), list): raise ValueError('数据接口结构错误')
