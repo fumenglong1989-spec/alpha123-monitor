@@ -45,17 +45,3 @@ jobs:
             monitor) python monitor.py ;;
             *) exit 1 ;;
           esac
-      - name: Diagnose verified API access
-        if: failure() && inputs.mode == 'probe'
-        run: |
-          python - <<'PY'
-          import httpx
-          try:
-              r = httpx.get('https://alpha123.uk/api/data?fresh=0', timeout=30)
-              print('Verified API HTTP status:', r.status_code)
-              if r.status_code == 200:
-                  data = r.json()
-                  print('Valid airdrops array:', isinstance(data, dict) and isinstance(data.get('airdrops'), list))
-          except Exception as exc:
-              print('API diagnostic error type:', type(exc).__name__)
-          PY

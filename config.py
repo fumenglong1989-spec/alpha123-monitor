@@ -3,6 +3,8 @@ from datetime import timezone, timedelta
 from pathlib import Path
 
 URL = 'https://alpha123.uk/zh/'
+MONITOR_URL = 'https://zh1.alpha123.net/'
+DATA_API = 'https://zh1.alpha123.net/api/data'
 RECIPIENTS = ('270114311@qq.com', '249446251@qq.com')
 BEIJING = timezone(timedelta(hours=8))
 STATE_PATH = Path(os.getenv('STATE_PATH', 'state.json'))

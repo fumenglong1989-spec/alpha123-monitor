@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from config import URL, RECIPIENTS, BEIJING, STATE_PATH
+from config import MONITOR_URL, DATA_API, RECIPIENTS, BEIJING, STATE_PATH
 from state_store import LocalStore, GithubStore
 from notifier import send
 
@@ -29,8 +29,8 @@ def fetch_today():
         browser = p.chromium.launch(headless=True)
         try:
             page = browser.new_page(timezone_id='Asia/Shanghai', locale='zh-CN')
-            with page.expect_response(lambda r: r.url.split('?')[0] == 'https://alpha123.uk/api/data', timeout=45000) as result:
-                response = page.goto(URL, wait_until='domcontentloaded', timeout=45000)
+            with page.expect_response(lambda r: r.url.split('?')[0] == DATA_API, timeout=45000) as result:
+                response = page.goto(MONITOR_URL, wait_until='domcontentloaded', timeout=45000)
                 logging.info('页面 HTTP 状态=%s', response.status if response else '无响应')
                 if not response or response.status != 200: raise ValueError('页面 HTTP 失败')
             api = result.value
@@ -55,6 +55,7 @@ def fetch_today():
             if count and (any(not i for i in identities) or len(set(identities)) != count):
                 raise ValueError('接口项目标识缺失或重复')
             for item, identity in zip(items, identities): item['id'] = identity
+            logging.info('source=%s api_status=%s content_type=%s upstream_count=%s today_count=%s parsed_items=%s', MONITOR_URL, api.status, api.headers.get('content-type'), len(data['airdrops']), count, json.dumps(items, ensure_ascii=False))
             return items
         finally: browser.close()
 

@@ -24,18 +24,19 @@ class LocalStore:
         temp.replace(self.path)
 
 class GithubStore:
-    def __init__(self):
+    def __init__(self, branch='monitor-state'):
+        self.branch = branch
         self.base = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
         self.client = httpx.Client(timeout=30, headers={'Authorization': 'Bearer ' + os.environ['GITHUB_TOKEN'], 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
         self.sha = None
     def load(self):
-        r = self.client.get(self.base + '/contents/state.json', params={'ref': 'monitor-state'})
+        r = self.client.get(self.base + '/contents/state.json', params={'ref': self.branch})
         if r.status_code == 404 and os.getenv('BOOTSTRAP_STATE') == 'true':
-            ref = self.client.get(self.base + '/git/ref/heads/monitor-state')
+            ref = self.client.get(self.base + '/git/ref/heads/' + self.branch)
             if ref.status_code == 404:
                 head = self.client.get(self.base + '/git/ref/heads/' + os.getenv('GITHUB_DEFAULT_BRANCH', 'main'))
                 head.raise_for_status()
-                created = self.client.post(self.base + '/git/refs', json={'ref': 'refs/heads/monitor-state', 'sha': head.json()['object']['sha']})
+                created = self.client.post(self.base + '/git/refs', json={'ref': 'refs/heads/' + self.branch, 'sha': head.json()['object']['sha']})
                 created.raise_for_status()
             else: ref.raise_for_status()
             data = initial(); self.save(data); return data
@@ -43,7 +44,7 @@ class GithubStore:
         obj = r.json(); self.sha = obj['sha']
         return validate(json.loads(base64.b64decode(obj['content'])))
     def save(self, data):
-        payload = {'message': 'Persist monitor notification state', 'branch': 'monitor-state', 'content': base64.b64encode(json.dumps(data, ensure_ascii=False).encode()).decode()}
+        payload = {'message': 'Persist monitor notification state', 'branch': self.branch, 'content': base64.b64encode(json.dumps(data, ensure_ascii=False).encode()).decode()}
         if self.sha: payload['sha'] = self.sha
         r = self.client.put(self.base + '/contents/state.json', json=payload)
         r.raise_for_status(); self.sha = r.json()['content']['sha']

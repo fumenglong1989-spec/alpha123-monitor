@@ -1,0 +1,33 @@
+name: Cross-run acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        options: ['1', '2', '3', '4']
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: alpha123-monitor
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m unittest discover -s tests -v
+      - name: Real today read
+        run: python monitor.py --probe
+      - name: Isolated persistence and simulated email
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TEST_PHASE: ${{ inputs.phase }}
+        run: python cloud_acceptance.py --phase "$TEST_PHASE"
