@@ -1,12 +1,12 @@
 # Alpha123 今日空投监控
 
-独立 Python 项目，每次运行检查一次。仅读取 `#today-airdrops`，排除预告和历史。北京时间判断日期；首次汇总、新项目、积分/数量/时间变化分别提醒，两个固定收件人分别发送 UTF-8 纯文本和 HTML 邮件。
+独立 Python 项目，正式来源为官方备用站 https://zh1.alpha123.net/ ，主站 https://alpha123.uk/zh/ 保留作参考及邮件链接。每次运行检查一次。仅读取 `#today-airdrops`，排除预告和历史。北京时间判断日期；首次汇总、新项目、积分/数量/时间变化分别提醒，两个固定收件人分别发送 UTF-8 纯文本和 HTML 邮件。
 
 ## 真实网站验证（2026-10-10）
 
 正常浏览器页面内联 JavaScript 请求 `/api/data?fresh=${forceFresh ? '1' : '0'}`，实际捕获 URL 为 `https://alpha123.uk/api/data?fresh=1`，HTTP 200，响应包含 `airdrops` 数组（2 个历史项目，样本 CLO 日期 2026-10-09）；今日表格正确排除这两项。渲染使用 `id/token/name/points/amount/date/beijing_time/phase`。普通 Python HTTP 请求页面与该接口均得到 403，因此不采用直接 HTTP 数据采集。普通 Playwright Chromium（不使用 stealth、不注入 cookie、不绕过验证码）成功加载该 API 并解析今日表格。2026-10-10 15:00 北京时间实际 `--probe` 返回 0 个项目，与浏览器“暂无数据”一致。
 
-默认始终采用浏览器，不猜测接口，不从其他栏目补数据。接口成功、JSON 结构正常、今日渲染对象存在、表头正确、数量一致才接受结果。空表格且没有明确“暂无数据”、HTTP 403、加载失败均停止通知。网络失败最多尝试 3 次，间隔 5/10 秒。未来网站结构变化需维护；当前没有真实非空项目，因此非空解析经过模拟验证，尚未实际非空验收。
+正式监控采用备用站的普通 Playwright 浏览器，捕获实际 `/api/data` 响应；主站 403 不代表今日无数据，不作为空结果或降级依据。默认始终采用浏览器，不猜测接口，不从其他栏目补数据。接口成功、JSON 结构正常、今日渲染对象存在、表头正确、数量一致才接受结果。空表格且没有明确“暂无数据”、HTTP 403、加载失败均停止通知。网络失败最多尝试 3 次，间隔 5/10 秒。未来网站结构变化需维护；当前没有真实非空项目，因此非空解析经过模拟验证，尚未实际非空验收。
 
 ## 免费方案与限制
 
@@ -90,3 +90,9 @@ Actions → Alpha123 Monitor → 某次运行 → Run monitor or explicit test �
 ## 当前交付状态
 
 项目已上传到 https://github.com/fumenglong1989-spec/alpha123-monitor ，Secrets 已设置。发件服务已修正为网易163，SMTP 分别接受两封测试邮件，用户确认两个QQ邮箱均已实际收到。云端网站首页/API仍受Cloudflare挑战而返回403，实际验收结果见 DEPLOYMENT.md；免费替代方案评估见 FREE_HOSTING.md。定时工作流保持关闭，直到网站访问和邮件测试均通过。Deployment Validation 仅供手动验收，没有 schedule，不会启动监控。
+
+## 跨运行验收
+
+`acceptance.yml` 手动依次选择 phase 1、2、3、4。每个独立实例先真实读取备用站，再在隔离的 `monitor-acceptance` 分支验证新增、去重、再次新增、字段更新，生成 UTF-8 纯文本及 HTML 邮件但不调用 SMTP；该工作流没有 SMTP Secrets。重复阶段会失败，禁止重置生产状态。生产仅使用 `monitor-state` 分支。
+
+停止监控：在 Actions 禁用 Alpha123 Monitor，并将仓库 Actions 变量 `MONITOR_ENABLED` 改成 `false`。密码和授权码仍仅存原有 Secrets，不需重新生成。
