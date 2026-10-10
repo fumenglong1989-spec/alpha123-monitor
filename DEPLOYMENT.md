@@ -15,3 +15,7 @@
 - 免费替代方案已查官方限制，详见FREE_HOSTING.md；未创建付费服务、未迁移Secrets到其他平台。
 
 剩余外部条件：网站提供允许正常自动读取的入口或授权，或实测通过且符合网站规则的免费运行环境。满足后再probe→初始化监控状态→去重验收→MONITOR_ENABLED=true并启用定时任务。
+
+## 最新最小访问评估
+
+Cloudflare Workers主站API实测403+challenge，已停止。官方使用手册中的备用站zh1.alpha123.net在GitHub Ubuntu单次探测HTTP200且今日解析成功，找到免费可行读取路径，但尚未切换正式来源、初始化状态或完成跨运行端到端验收。详见WORKERS_ACCESS_REPORT.md。163邮件配置保留，定时监控继续关闭。

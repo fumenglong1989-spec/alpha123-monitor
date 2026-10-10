@@ -1,0 +1,10 @@
+{
+  "tested_at": "2026-10-10T07:50:46.700Z",
+  "source": "Cloudflare Workers Playground edge sandbox",
+  "url": "https://alpha123.uk/api/data?fresh=0",
+  "status": 403,
+  "content_type": "text/html; charset=UTF-8",
+  "cf_mitigated": "challenge",
+  "outcome": "STOP_ACCESS_DENIED",
+  "parsed": false
+}
