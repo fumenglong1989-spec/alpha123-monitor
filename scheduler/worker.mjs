@@ -6,17 +6,23 @@ export async function dispatchTick(controller, env, request = fetch) {
   const scheduled = new Date(controller.scheduledTime).toISOString();
   if (env.SCHEDULER_ENABLED !== 'true') return { outcome: 'disabled', scheduled };
   if (!env.GITHUB_DISPATCH_TOKEN) throw new Error('missing_dispatch_secret');
+  const secret = env.GITHUB_DISPATCH_TOKEN.trim();
+  if (!/^github_pat_[A-Za-z0-9_]+$/.test(secret)) throw new Error('dispatch_secret_format_invalid');
   let response;
+  let stage = 'request_setup';
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), 20000);
   try {
+    const headers = new Headers({
+      Authorization: `Bearer ${secret}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'alpha123-scheduler',
+      'X-GitHub-Api-Version': '2026-03-10',
+    });
+    stage = 'fetch';
     response = await request(endpoint, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20000),
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN.trim()}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'alpha123-scheduler',
-        'X-GitHub-Api-Version': '2026-03-10',
-      },
+      method: 'POST', redirect: 'manual', signal: deadline.signal, headers,
       body: JSON.stringify({ ref: 'main', inputs: {
         mode: 'monitor', bootstrap: 'false',
         trigger_source: 'cloudflare', scheduled_time: scheduled,
@@ -24,7 +30,9 @@ export async function dispatchTick(controller, env, request = fetch) {
     });
   } catch (error) {
     const name = ['TypeError', 'TimeoutError', 'AbortError'].includes(error?.name) ? error.name : 'OtherError';
-    throw new Error(`dispatch_fetch_${name}`); // Never log message, request, or credentials.
+    throw new Error(`dispatch_${stage}_${name}`); // Never log message, request, or credentials.
+  } finally {
+    clearTimeout(timer);
   }
   if (response.status !== 200 && response.status !== 204)
     throw new Error(`dispatch_http_${response.status}`); // Never log response body.

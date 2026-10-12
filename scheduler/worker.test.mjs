@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker, { dispatchTick } from './worker.mjs';
 const controller = () => ({ scheduledTime: Date.UTC(2026,9,10,9), noRetry() {} });
-const env = { SCHEDULER_ENABLED: 'true', GITHUB_DISPATCH_TOKEN: 'synthetic-secret' };
+const env = { SCHEDULER_ENABLED: 'true', GITHUB_DISPATCH_TOKEN: 'github_pat_synthetic_secret' };
 test('disabled scheduler makes no request', async () => {
   assert.equal((await dispatchTick(controller(), {}, () => assert.fail())).outcome, 'disabled');
 });
@@ -12,7 +12,7 @@ test('missing token fails closed', async () => {
 test('dispatches only production monitor, records scheduled time and run id', async () => {
   const result = await dispatchTick(controller(),env,async (url, options) => {
     assert.match(url,/github\.com\/repos\/fumenglong1989-spec\/alpha123-monitor/);
-    assert.equal(options.redirect,'error');
+    assert.equal(options.redirect,'manual');
     const body=JSON.parse(options.body);
     assert.equal(body.inputs.mode,'monitor');assert.equal(body.inputs.bootstrap,'false');
     assert.equal(body.inputs.trigger_source,'cloudflare');
@@ -37,4 +37,13 @@ test('network exception is redacted and never retried', async () => {
 });
 test('no public HTTP trigger endpoint', async () => {
   assert.equal((await worker.fetch()).status,404);
+});
+test('incorrect secret format fails before transmission', async () => {
+  await assert.rejects(dispatchTick(controller(), {...env, GITHUB_DISPATCH_TOKEN:'not-a-token'}, () => assert.fail()), /dispatch_secret_format_invalid/);
+});
+test('outer whitespace is normalized without logging the secret', async () => {
+  await dispatchTick(controller(), {...env, GITHUB_DISPATCH_TOKEN:'  github_pat_synthetic_secret\n'}, async (url, options) => {
+    assert.equal(options.headers.get('Authorization'), 'Bearer github_pat_synthetic_secret');
+    return new Response(null,{status:204});
+  });
 });
