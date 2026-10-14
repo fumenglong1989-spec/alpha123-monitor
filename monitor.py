@@ -9,18 +9,43 @@ from config import MONITOR_URL, DATA_API, RECIPIENTS, BEIJING, STATE_PATH
 from state_store import LocalStore, GithubStore
 from notifier import send
 
+class DataValidationError(ValueError):
+    """Only static, safe parser diagnostics may be logged verbatim."""
+
+
 def now(): return datetime.now(BEIJING)
 def digest(value): return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
+def project_identities(records):
+    """Use the site's immutable creation timestamp when its API omits id.
+
+    Name/token/amount may still be unpublished, and updated_timestamp is mutable.
+    Ambiguous or absent identities fail closed instead of merging projects.
+    """
+    identities = []
+    for record in records:
+        explicit = record.get('id')
+        if isinstance(explicit, (str, int)) and not isinstance(explicit, bool) and str(explicit).strip():
+            identity = str(explicit).strip()
+        else:
+            created = record.get('created_timestamp')
+            if isinstance(created, bool) or not isinstance(created, (int, str)) or not str(created).isdigit() or int(created) <= 0:
+                raise DataValidationError('接口项目缺少稳定标识和有效创建时间')
+            identity = 'created:' + str(int(created))
+        identities.append(identity)
+    if len(set(identities)) != len(identities):
+        raise DataValidationError('接口项目稳定标识重复，停止通知')
+    return identities
+
 def parse_rows(rows):
     if len(rows) == 1 and len(rows[0]) == 1 and '暂无数据' in rows[0][0]: return []
-    if not rows: raise ValueError('表格尚未加载')
+    if not rows: raise DataValidationError('表格尚未加载')
     items = []
     for row in rows:
-        if len(row) != 4 or any(not str(c).strip() for c in row): raise ValueError('今日空投表格结构变化')
+        if len(row) != 4 or any(not str(c).strip() for c in row): raise DataValidationError('今日空投表格结构变化')
         name = row[0].strip()
         items.append({'name': name, 'points': row[1].strip(), 'amount': row[2].strip(), 'time': row[3].strip()})
-    if len({i['name'] for i in items}) != len(items): raise ValueError('项目标识重复；停止发送')
+    if len({i['name'] for i in items}) != len(items): raise DataValidationError('项目标识重复；停止发送')
     return items
 
 def fetch_today():
@@ -32,16 +57,16 @@ def fetch_today():
             with page.expect_response(lambda r: r.url.split('?')[0] == DATA_API, timeout=45000) as result:
                 response = page.goto(MONITOR_URL, wait_until='domcontentloaded', timeout=45000)
                 logging.info('页面 HTTP 状态=%s', response.status if response else '无响应')
-                if not response or response.status != 200: raise ValueError('页面 HTTP 失败')
+                if not response or response.status != 200: raise DataValidationError('页面 HTTP 失败')
             api = result.value
             logging.info('数据 API HTTP 状态=%s', api.status)
-            if api.status != 200: raise ValueError('数据接口 HTTP 失败')
+            if api.status != 200: raise DataValidationError('数据接口 HTTP 失败')
             data = api.json()
-            if not isinstance(data, dict) or not isinstance(data.get('airdrops'), list): raise ValueError('数据接口结构错误')
+            if not isinstance(data, dict) or not isinstance(data.get('airdrops'), list): raise DataValidationError('数据接口结构错误')
             page.wait_for_function("Array.isArray(window.todayAirdrops)", timeout=20000)
             count = page.evaluate('window.todayAirdrops.length')
             headers = page.locator('#today-airdrops th').all_text_contents()
-            if [h.strip() for h in headers] != ['项目', '积分', '数量', '时间']: raise ValueError('表头变化')
+            if [h.strip() for h in headers] != ['项目', '积分', '数量', '时间']: raise DataValidationError('表头变化')
             rows = page.locator('#today-airdrops tbody tr').evaluate_all("rows => rows.map(r => Array.from(r.querySelectorAll('td')).map(c => c.innerText.trim()))")
             # Use primary fields only, excluding prices, shares and dynamic countdowns.
             if count:
@@ -50,10 +75,10 @@ def fetch_today():
                 times = page.evaluate("window.todayAirdrops.map(a => (a.beijing_time || a.time || '待公布') + (a.phase === 2 ? ' (二段)' : ''))")
                 for row, value in zip(rows, times): row[3] = value
             items = parse_rows(rows)
-            if len(items) != count: raise ValueError('渲染项目数量不一致')
-            identities = page.evaluate("window.todayAirdrops.map(a => a.id ? String(a.id) : null)")
-            if count and (any(not i for i in identities) or len(set(identities)) != count):
-                raise ValueError('接口项目标识缺失或重复')
+            if len(items) != count: raise DataValidationError('渲染项目数量不一致')
+            records = page.evaluate("window.todayAirdrops.map(a => ({id:a.id, created_timestamp:a.created_timestamp}))")
+            if len(records) != count: raise DataValidationError('接口项目标识数量不一致')
+            identities = project_identities(records)
             for item, identity in zip(items, identities): item['id'] = identity
             logging.info('source=%s api_status=%s content_type=%s upstream_count=%s today_count=%s parsed_items=%s', MONITOR_URL, api.status, api.headers.get('content-type'), len(data['airdrops']), count, json.dumps(items, ensure_ascii=False))
             return items
@@ -63,7 +88,7 @@ def fetch_with_retry(fetch=fetch_today, sleep=time.sleep):
     for attempt in range(3):
         try: return fetch()
         except Exception as exc:
-            logging.warning('网站检查失败 attempt=%s error_type=%s', attempt + 1, type(exc).__name__)
+            logging.warning('网站检查失败 attempt=%s error_type=%s reason=%s', attempt + 1, type(exc).__name__, str(exc) if isinstance(exc, DataValidationError) else 'details_suppressed')
             if attempt == 2: raise
             sleep(5 * (attempt + 1))
 
@@ -108,12 +133,12 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     try:
         started = now(); items = fetch_with_retry()
-        if now().date() != started.date(): raise ValueError('检查跨过北京时间午夜，下一轮重新读取')
+        if now().date() != started.date(): raise DataValidationError('检查跨过北京时间午夜，下一轮重新读取')
         if args.probe:
             print(json.dumps({'detected': now().isoformat(), 'items': items}, ensure_ascii=False)); return 0
         store = GithubStore() if os.getenv('GITHUB_ACTIONS') == 'true' else LocalStore(STATE_PATH)
         return 1 if process(items, store) else 0
     except Exception as exc:
-        logging.error('本轮失败，未将网站错误当成新空投 error_type=%s', type(exc).__name__); return 1
+        logging.error('本轮失败，未将网站错误当成新空投 error_type=%s reason=%s', type(exc).__name__, str(exc) if isinstance(exc, DataValidationError) else 'details_suppressed'); return 1
 
 if __name__ == '__main__': raise SystemExit(main())
